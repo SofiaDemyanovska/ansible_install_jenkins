@@ -1,0 +1,118 @@
+---
+- name: Install Jenkins
+  hosts: all
+  become: yes
+  become_method: sudo
+  remote_user: root
+  
+  vars:
+    admin_user_pass: "admin"
+    hibernate_username: "omsuser"
+
+  tasks:
+  - name: Install yum
+    yum:
+      name:
+        - wget
+        - java-1.8.0-openjdk
+        - git
+
+  - name: Download jenkins.repo
+    get_url:
+      url: https://pkg.jenkins.io/redhat/jenkins.repo
+      dest: /etc/yum.repos.d/jenkins.repo
+
+  - name: Import Jenkins Key
+    rpm_key:
+      state: present
+      key: https://pkg.jenkins.io/redhat/jenkins.io.key
+
+  - name: Install Jenkins
+    yum:
+      name: jenkins
+      state: present
+
+  - name: Start & Enable Jenkins
+    systemd:
+      name: jenkins
+      state: started
+      enabled: true
+
+  - name: Open Firewall Port
+    firewalld:
+      zone: public
+      port: 8080/tcp
+      permanent: true
+      state: enabled
+      immediate: true
+
+#  - name: Sleep for 30 seconds and continue with play
+#    wait_for: timeout=30
+
+#  - name: read admin pwd
+#    shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+#    register: adminpwd
+
+#  - name: unlock and add admin user
+#    jenkins_script:
+#     script: |
+#      import jenkins.model.*
+#      import hudson.security.*
+#      def instance = Jenkins.getInstance()
+#      def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+#      hudsonRealm.createAccount('admin', '${user_pwd}')
+#      instance.setSecurityRealm(hudsonRealm)
+#      def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+#      strategy.setAllowAnonymousRead(false)
+#      instance.setAuthorizationStrategy(strategy)
+#      instance.save()
+#     args:
+#      user_pwd: "{{ admin_user_pass }}"
+#     user: admin
+#     password: "{{ admin_user_pass }}"
+
+#  - name: complete setup wizard
+#    jenkins_script:
+#     script: |
+#      import static jenkins.model.Jenkins.instance as jenkins
+#      import jenkins.install.InstallState
+#      if (!jenkins.installState.isSetupComplete()) {
+#        InstallState.INITIAL_SETUP_COMPLETED.initializeState()
+#      }
+#     user: admin
+#     password: "{{ admin_user_pass }}"
+
+  - name:
+    shell: sudo rm -r /var/lib/jenkins
+
+  - git:
+      repo: git@github.com:SofiaDemyanovska/jenkins.git
+      dest: /var/lib/jenkins
+
+  - name: Recursively change ownership of a directory
+    file:
+      path: /var/lib/jenkins
+      state: directory
+      recurse: yes
+      owner: jenkins
+      group: jenkins
+
+  - name: Restart Jenkins service
+    service:
+      name=jenkins
+      state=restarted
+      enabled=yes
+
+  - name: Ansible Template Example
+    template:
+      src: 
+      dest: /Users/mdtutorials2/Documents/Ansible/hello_world.txt
+
+  - name: Queue build of a project in Jenkins
+    uri:
+      url: "http://10.26.1.199:8080/buildByToken/build?job=job1_maven&token=12345"
+      method: POST
+      user: admin
+      password: admin
+      force_basic_auth: yes
+      status_code: 201

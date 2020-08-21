@@ -1,0 +1,21 @@
+  - name:
+    shell: sudo rm -r /var/lib/jenkins
+
+  - git:
+      repo: git@github.com:SofiaDemyanovska/jenkins.git
+      dest: /var/lib/jenkins
+
+  - name: Recursively change ownership of a directory
+    file:
+      path: /var/lib/jenkins
+      state: directory
+      recurse: yes
+      owner: jenkins
+      group: jenkins
+
+  - name: Restart Jenkins service
+    service:
+      name=jenkins
+      state=restarted
+      enabled=yes
+
